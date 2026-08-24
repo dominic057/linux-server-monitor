@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Runtime logs
+logs/*.log
+
+# Runtime database
+logs/*.db
+
+# Environment files
+.env

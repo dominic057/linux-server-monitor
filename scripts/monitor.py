@@ -26,9 +26,15 @@ from database import (
 # 监控阈值
 # =========================
 
-CPU_THRESHOLD = 80
-MEMORY_THRESHOLD = 80
-DISK_THRESHOLD = 90
+CPU_WARNING_THRESHOLD = 80
+CPU_CRITICAL_THRESHOLD = 90
+
+
+MEMORY_WARNING_THRESHOLD = 80
+MEMORY_CRITICAL_THRESHOLD = 90
+
+DISK_WARNING_THRESHOLD = 80
+DISK_CRITICAL_THRESHOLD = 90
 
 
 # =========================
@@ -70,41 +76,85 @@ def get_system_info():
         "bytes_recv": network.bytes_recv,
     }
 
-
 def check_alerts(info):
-    """检查系统指标是否超过阈值"""
+    """检查系统指标是否超过告警阈值"""
 
     alerts = []
 
-    if info["cpu"] > CPU_THRESHOLD:
+    # =========================
+    # CPU 告警
+    # =========================
+
+    if info["cpu"] >= CPU_CRITICAL_THRESHOLD:
+
+        alerts.append({
+            "event_type": "HIGH_CPU",
+            "severity": "CRITICAL",
+            "message": (
+                f"CPU usage is critically high: "
+                f"{info['cpu']:.1f}%"
+            )
+        })
+
+    elif info["cpu"] >= CPU_WARNING_THRESHOLD:
 
         alerts.append({
             "event_type": "HIGH_CPU",
             "severity": "WARNING",
             "message": (
-                f"CPU usage is too high: "
+                f"CPU usage is high: "
                 f"{info['cpu']:.1f}%"
             )
         })
 
-    if info["memory"] > MEMORY_THRESHOLD:
+    # =========================
+    # Memory 告警
+    # =========================
+
+    if info["memory"] >= MEMORY_CRITICAL_THRESHOLD:
+
+        alerts.append({
+            "event_type": "HIGH_MEMORY",
+            "severity": "CRITICAL",
+            "message": (
+                f"Memory usage is critically high: "
+                f"{info['memory']:.1f}%"
+            )
+        })
+
+    elif info["memory"] >= MEMORY_WARNING_THRESHOLD:
 
         alerts.append({
             "event_type": "HIGH_MEMORY",
             "severity": "WARNING",
             "message": (
-                f"Memory usage is too high: "
+                f"Memory usage is high: "
                 f"{info['memory']:.1f}%"
             )
         })
 
-    if info["disk"] > DISK_THRESHOLD:
+    # =========================
+    # Disk 告警
+    # =========================
+
+    if info["disk"] >= DISK_CRITICAL_THRESHOLD:
 
         alerts.append({
             "event_type": "HIGH_DISK",
             "severity": "CRITICAL",
             "message": (
-                f"Disk usage is too high: "
+                f"Disk usage is critically high: "
+                f"{info['disk']:.1f}%"
+            )
+        })
+
+    elif info["disk"] >= DISK_WARNING_THRESHOLD:
+
+        alerts.append({
+            "event_type": "HIGH_DISK",
+            "severity": "WARNING",
+            "message": (
+                f"Disk usage is high: "
                 f"{info['disk']:.1f}%"
             )
         })
@@ -166,12 +216,21 @@ def print_system_info(info, alerts):
 
     if alerts:
 
-        print("Status: WARNING")
+        # 根据最高级别告警确定显示状态
+        if any(
+            alert["severity"] == "CRITICAL"
+            for alert in alerts
+        ):
+            status = "CRITICAL"
+        else:
+            status = "WARNING"
+
+        print(f"Status: {status}")
 
         for alert in alerts:
 
             print(
-                f"[WARNING] "
+                f"[{alert['severity']}] "
                 f"{alert['message']}"
             )
 
@@ -214,15 +273,22 @@ def main():
 
             if alerts:
 
-                current_status = "WARNING"
+               # 根据最高级别告警确定服务器状态
+                if any(
+                    alert["severity"] == "CRITICAL"
+                    for alert in alerts
+                ):
+                    current_status = "CRITICAL"
+                else:
+                    current_status = "WARNING"
 
                 update_server_status(
                     SERVER_ID,
-                    "WARNING"
+                    current_status
                 )
 
                 # 第一次发现异常
-                if previous_status != "WARNING":
+                if previous_status == "NORMAL":
 
                     alert = alerts[0]
 
@@ -278,7 +344,7 @@ def main():
                 )
 
                 # 从异常恢复
-                if previous_status == "WARNING":
+                if previous_status != "NORMAL":
 
                     print()
 

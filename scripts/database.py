@@ -6,14 +6,12 @@ DB_PATH = "logs/incidents.db"
 
 
 def get_connection():
-
     return sqlite3.connect(DB_PATH)
 
 
 def init_database():
 
     conn = get_connection()
-
     cursor = conn.cursor()
 
     # =========================
@@ -80,9 +78,36 @@ def init_database():
         )
     """)
 
-    conn.commit()
+    # =========================
+    # Incident历史记录表
+    # =========================
 
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS incident_history (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            incident_id TEXT NOT NULL,
+
+            status TEXT NOT NULL,
+
+            operator TEXT NOT NULL,
+
+            action TEXT NOT NULL,
+
+            timestamp TEXT NOT NULL,
+
+            comment TEXT
+        )
+    """)
+
+    conn.commit()
     conn.close()
+
+
+# ============================================================
+# Incident管理
+# ============================================================
 
 
 def create_incident(
@@ -93,7 +118,6 @@ def create_incident(
 ):
 
     conn = get_connection()
-
     cursor = conn.cursor()
 
     now = datetime.now()
@@ -105,6 +129,11 @@ def create_incident(
         )
     )
 
+    timestamp = now.strftime(
+        "%Y-%m-%d %H:%M:%S"
+    )
+
+    # 创建Incident
     cursor.execute("""
         INSERT INTO incidents (
 
@@ -127,21 +156,49 @@ def create_incident(
         event_type,
         severity,
         "OPEN",
-
-        now.strftime(
-            "%Y-%m-%d %H:%M:%S"
-        ),
-
+        timestamp,
         description
 
     ))
 
-    conn.commit()
+    # 记录Incident历史
+    cursor.execute("""
+        INSERT INTO incident_history (
 
+            incident_id,
+            status,
+            operator,
+            action,
+            timestamp,
+            comment
+
+        )
+
+        VALUES (?, ?, ?, ?, ?, ?)
+
+    """, (
+
+        incident_id,
+        "OPEN",
+        "SYSTEM",
+        "INCIDENT_CREATED",
+        timestamp,
+        "Incident automatically created by monitoring system."
+
+    ))
+
+    conn.commit()
     conn.close()
 
-    return incident_id
+    add_incident_history(
+    incident_id=incident_id,
+    status="OPEN",
+    operator="SYSTEM",
+    action="CREATE_INCIDENT",
+    comment=description
+    )
 
+    return incident_id
 
 def update_incident_status(
     incident_id,
@@ -168,17 +225,13 @@ def update_incident_status(
             WHERE incident_id = ?
 
         """, (
-
             status,
-
-            now.strftime(
-                "%Y-%m-%d %H:%M:%S"
-            ),
-
+            now.strftime("%Y-%m-%d %H:%M:%S"),
             resolution,
-
             incident_id
         ))
+
+        action = "RESOLVE_INCIDENT"
 
     else:
 
@@ -190,20 +243,70 @@ def update_incident_status(
             WHERE incident_id = ?
 
         """, (
-
             status,
             incident_id
         ))
+
+        action = "UPDATE_STATUS"
+
+    conn.commit()
+
+    conn.close()
+
+    add_incident_history(
+        incident_id=incident_id,
+        status=status,
+        operator="SYSTEM",
+        action=action,
+        comment=resolution
+    )
+
+def add_incident_history(
+    incident_id,
+    status,
+    operator,
+    action,
+    comment=None
+):
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    now = datetime.now()
+
+    cursor.execute("""
+        INSERT INTO incident_history (
+            incident_id,
+            status,
+            operator,
+            action,
+            timestamp,
+            comment
+        )
+        VALUES (?, ?, ?, ?, ?, ?)
+    """, (
+        incident_id,
+        status,
+        operator,
+        action,
+        now.strftime("%Y-%m-%d %H:%M:%S"),
+        comment
+    ))
 
     conn.commit()
 
     conn.close()
 
 
+# ============================================================
+# Server资产管理
+# ============================================================
+
+
 def register_server(info):
 
     conn = get_connection()
-
     cursor = conn.cursor()
 
     now = datetime.now()
@@ -267,16 +370,14 @@ def register_server(info):
         info["cpu_count"],
         info["memory_total_gb"],
         info["disk_total_gb"],
-
         "NORMAL",
-
         now.strftime(
             "%Y-%m-%d %H:%M:%S"
         )
+
     ))
 
     conn.commit()
-
     conn.close()
 
 
@@ -286,7 +387,6 @@ def update_server_status(
 ):
 
     conn = get_connection()
-
     cursor = conn.cursor()
 
     now = datetime.now()
@@ -309,17 +409,16 @@ def update_server_status(
         ),
 
         server_id
+
     ))
 
     conn.commit()
-
     conn.close()
 
 
 def list_servers():
 
     conn = get_connection()
-
     cursor = conn.cursor()
 
     cursor.execute("""
@@ -346,6 +445,67 @@ def list_servers():
     conn.close()
 
     return servers
+
+
+# ============================================================
+# Incident查询
+# ============================================================
+
+
+def list_incidents():
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+
+            incident_id,
+            server_name,
+            event_type,
+            severity,
+            status,
+            detected_time,
+            resolved_time
+
+        FROM incidents
+
+        ORDER BY id DESC
+    """)
+
+    incidents = cursor.fetchall()
+
+    conn.close()
+
+    return incidents
+
+
+def get_incident_history(incident_id):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+
+            status,
+            operator,
+            action,
+            timestamp,
+            comment
+
+        FROM incident_history
+
+        WHERE incident_id = ?
+
+        ORDER BY id ASC
+    """, (incident_id,))
+
+    history = cursor.fetchall()
+
+    conn.close()
+
+    return history
 
 
 if __name__ == "__main__":

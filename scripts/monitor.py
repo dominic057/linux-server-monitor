@@ -18,7 +18,8 @@ from database import (
     init_database,
     create_incident,
     update_incident_status,
-    update_server_status
+    update_server_status,
+    add_incident_history
 )
 
 
@@ -305,6 +306,14 @@ def main():
                         event_type=alert["event_type"],
                         severity=alert["severity"],
                         description=description
+                    )
+                    
+                    add_incident_history(
+                        incident_id=current_incident_id,
+                        status="PROCESSING",
+                        operator="SYSTEM",
+                        action="START_PROCESSING",
+                        comment="System started processing the server alert."
                     )
 
                     print()

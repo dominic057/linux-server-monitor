@@ -79,6 +79,32 @@ def init_database():
     """)
 
     # =========================
+    # Metrics监控数据表
+    # =========================
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS metrics (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            server_id TEXT NOT NULL,
+
+            cpu_usage REAL,
+
+            memory_usage REAL,
+
+            disk_usage REAL,
+
+            network_sent_mb REAL,
+
+            network_recv_mb REAL,
+
+            timestamp TEXT NOT NULL
+
+        )
+    """)
+
+    # =========================
     # Incident历史记录表
     # =========================
 
@@ -380,6 +406,43 @@ def register_server(info):
     conn.commit()
     conn.close()
 
+def get_server(server_id):
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            server_id,
+            hostname,
+            ip_address,
+            environment,
+            os,
+            os_version,
+            kernel,
+            cpu_count,
+            memory_total_gb,
+            disk_total_gb,
+            status,
+            last_check
+
+        FROM servers
+
+        WHERE server_id = ?
+
+    """, (server_id,))
+
+
+    server = cursor.fetchone()
+
+
+    conn.close()
+
+
+    return server
+
+
 
 def update_server_status(
     server_id,
@@ -413,6 +476,97 @@ def update_server_status(
     ))
 
     conn.commit()
+    conn.close()
+
+
+def save_metric(
+    server_id,
+    cpu_usage,
+    memory_usage,
+    disk_usage,
+    network_sent_mb,
+    network_recv_mb
+):
+
+    conn = get_connection()
+    cursor = conn.cursor()
+
+    now = datetime.now()
+
+    cursor.execute("""
+        INSERT INTO metrics (
+            server_id,
+            cpu_usage,
+            memory_usage,
+            disk_usage,
+            network_sent_mb,
+            network_recv_mb,
+            timestamp
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        server_id,
+        cpu_usage,
+        memory_usage,
+        disk_usage,
+        network_sent_mb,
+        network_recv_mb,
+        now.strftime("%Y-%m-%d %H:%M:%S")
+    ))
+
+    conn.commit()
+    conn.close()
+
+
+def insert_metric(
+    server_id,
+    cpu,
+    memory,
+    disk,
+    sent,
+    recv
+):
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    now = datetime.now()
+
+
+    cursor.execute("""
+        INSERT INTO metrics (
+
+            server_id,
+            cpu_usage,
+            memory_usage,
+            disk_usage,
+            network_sent_mb,
+            network_recv_mb,
+            timestamp
+
+        )
+
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+
+    """, (
+
+        server_id,
+        cpu,
+        memory,
+        disk,
+        sent,
+        recv,
+
+        now.strftime(
+            "%Y-%m-%d %H:%M:%S"
+        )
+
+    ))
+
+
+    conn.commit()
+
     conn.close()
 
 
@@ -506,6 +660,70 @@ def get_incident_history(incident_id):
     conn.close()
 
     return history
+
+
+def get_metric_summary(server_id):
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            COUNT(*),
+            AVG(cpu_usage),
+            MAX(cpu_usage),
+            MIN(cpu_usage),
+            AVG(memory_usage),
+            MAX(memory_usage),
+            AVG(disk_usage),
+            MAX(disk_usage)
+        FROM metrics
+        WHERE server_id = ?
+    """, (
+        server_id,
+    ))
+
+    summary = cursor.fetchone()
+
+    conn.close()
+
+    return summary
+
+def get_incident_summary(server_id):
+
+    conn = get_connection()
+
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT
+            COUNT(*),
+            SUM(
+                CASE
+                    WHEN status = 'RESOLVED'
+                    THEN 1
+                    ELSE 0
+                END
+            ),
+            SUM(
+                CASE
+                    WHEN status != 'RESOLVED'
+                    THEN 1
+                    ELSE 0
+                END
+            )
+        FROM incidents
+        WHERE server_name = ?
+    """, (
+        server_id,
+    ))
+
+    summary = cursor.fetchone()
+
+    conn.close()
+
+    return summary
 
 
 if __name__ == "__main__":

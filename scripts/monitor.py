@@ -19,7 +19,10 @@ from database import (
     create_incident,
     update_incident_status,
     update_server_status,
-    add_incident_history
+    add_incident_history,
+    get_server,
+    save_metric,
+    get_server
 )
 
 
@@ -252,6 +255,62 @@ def main():
     # 初始化数据库
     init_database()
 
+
+    # =========================
+    # 显示服务器信息
+    # =========================
+
+    server = get_server(
+        SERVER_ID
+    )
+
+    if server:
+
+        print()
+
+        print(
+            "[INFO] Monitoring Server:"
+        )
+
+        print(
+            f"Server ID:   {server[0]}"
+        )
+
+        print(
+            f"Hostname:    {server[1]}"
+        )
+
+        print(
+            f"Environment:{server[3]}"
+        )
+
+        print(
+            f"OS:          {server[4]}"
+        )
+
+        print(
+            f"CPU Cores:   {server[7]}"
+        )
+
+        print(
+            f"Memory:      {server[8]} GB"
+        )
+
+        print()
+
+
+    # 检查服务器是否注册
+    server = get_server(SERVER_ID)
+
+
+    if server is None:
+
+        print(
+            "[ERROR] Server not registered."
+        )
+
+        return
+
     previous_status = "NORMAL"
     current_incident_id = None
 
@@ -260,6 +319,16 @@ def main():
         try:
 
             info = get_system_info()
+            
+            # 保存监控指标
+            save_metric(
+                SERVER_ID,
+                info["cpu"],
+                info["memory"],
+                info["disk"],
+                info["bytes_sent"] / 1024 / 1024,
+                info["bytes_recv"] / 1024 / 1024
+            )
 
             alerts = check_alerts(info)
 

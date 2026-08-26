@@ -1,0 +1,1720 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Linux Server Monitoring</title>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+            margin: 0;
+
+            font-family:
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                Arial,
+                sans-serif;
+
+            background: #f4f6f8;
+
+            color: #1f2937;
+        }
+
+
+        /* =========================
+           Header
+        ========================= */
+
+        .header {
+
+            background: #111827;
+
+            color: white;
+
+            padding: 20px 32px;
+
+            display: flex;
+
+            justify-content: space-between;
+
+            align-items: center;
+        }
+
+
+        .header-title {
+
+            font-size: 24px;
+
+            font-weight: 600;
+        }
+
+
+        .header-subtitle {
+
+            margin-top: 5px;
+
+            font-size: 13px;
+
+            color: #9ca3af;
+        }
+
+
+        .server-status {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 8px;
+
+            padding: 8px 14px;
+
+            border-radius: 20px;
+
+            background: #064e3b;
+
+            color: #6ee7b7;
+
+            font-size: 14px;
+
+            font-weight: 600;
+        }
+
+
+        .status-dot {
+
+            width: 9px;
+
+            height: 9px;
+
+            border-radius: 50%;
+
+            background: #34d399;
+        }
+
+
+        /* =========================
+           Container
+        ========================= */
+
+        .container {
+
+            max-width: 1400px;
+
+            margin: 0 auto;
+
+            padding: 28px;
+        }
+
+
+        /* =========================
+           Cards
+        ========================= */
+
+        .cards {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap: 20px;
+
+            margin-bottom: 24px;
+        }
+
+
+        .card {
+
+            background: white;
+
+            border-radius: 12px;
+
+            padding: 22px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+
+        .card-title {
+
+            color: #6b7280;
+
+            font-size: 14px;
+
+            margin-bottom: 12px;
+        }
+
+
+        .card-value {
+
+            font-size: 30px;
+
+            font-weight: 600;
+        }
+
+
+        .card-unit {
+
+            font-size: 15px;
+
+            color: #6b7280;
+
+            margin-left: 4px;
+        }
+
+
+        .card-footer {
+
+            margin-top: 10px;
+
+            font-size: 12px;
+
+            color: #9ca3af;
+        }
+
+
+        /* =========================
+           Server Information
+        ========================= */
+
+        .server-info-container {
+
+            background: white;
+
+            border-radius: 12px;
+
+            padding: 24px;
+
+            margin-bottom: 24px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+
+        .server-info-grid {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(4, 1fr);
+
+            gap: 20px;
+        }
+
+
+        .info-item {
+
+            padding: 15px;
+
+            background: #f9fafb;
+
+            border-radius: 8px;
+        }
+
+
+        .info-label {
+
+            font-size: 12px;
+
+            color: #6b7280;
+
+            margin-bottom: 6px;
+        }
+
+
+        .info-value {
+
+            font-size: 15px;
+
+            font-weight: 600;
+
+            color: #111827;
+        }
+
+
+        /* =========================
+           Charts
+        ========================= */
+
+        .chart-container {
+
+            background: white;
+
+            border-radius: 12px;
+
+            padding: 24px;
+
+            margin-bottom: 24px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+
+        .section-title {
+
+            font-size: 18px;
+
+            font-weight: 600;
+
+            margin-bottom: 20px;
+        }
+
+
+        .chart-wrapper {
+
+            height: 350px;
+
+            position: relative;
+        }
+
+
+        /* =========================
+           Incidents
+        ========================= */
+
+        .incident-container {
+
+            background: white;
+
+            border-radius: 12px;
+
+            padding: 24px;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+
+        table {
+
+            width: 100%;
+
+            border-collapse: collapse;
+        }
+
+
+        th,
+        td {
+
+            padding: 13px 12px;
+
+            text-align: left;
+
+            border-bottom:
+                1px solid #e5e7eb;
+
+            font-size: 13px;
+        }
+
+
+        th {
+
+            color: #6b7280;
+
+            font-weight: 500;
+        }
+
+
+        .badge {
+
+            display: inline-block;
+
+            padding: 4px 9px;
+
+            border-radius: 12px;
+
+            font-size: 12px;
+
+            font-weight: 500;
+        }
+
+
+        .badge-warning {
+
+            background: #fef3c7;
+
+            color: #92400e;
+        }
+
+
+        .badge-critical {
+
+            background: #fee2e2;
+
+            color: #991b1b;
+        }
+
+
+        .badge-resolved {
+
+            background: #d1fae5;
+
+            color: #065f46;
+        }
+
+
+        .badge-normal {
+
+            background: #dbeafe;
+
+            color: #1e40af;
+        }
+
+
+        .empty {
+
+            text-align: center;
+
+            color: #9ca3af;
+
+            padding: 30px;
+        }
+
+
+        /* =========================
+           Responsive
+        ========================= */
+
+        @media (max-width: 1000px) {
+
+            .cards {
+
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+
+
+            .server-info-grid {
+
+                grid-template-columns:
+                    repeat(2, 1fr);
+            }
+
+        }
+
+
+        @media (max-width: 600px) {
+
+            .header {
+
+                padding: 18px;
+
+            }
+
+
+            .container {
+
+                padding: 16px;
+
+            }
+
+
+            .cards {
+
+                grid-template-columns: 1fr;
+
+            }
+
+
+            .server-info-grid {
+
+                grid-template-columns: 1fr;
+
+            }
+
+
+            .header-title {
+
+                font-size: 20px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <!-- =========================
+         Header
+    ========================= -->
+
+    <header class="header">
+
+        <div>
+
+            <div class="header-title">
+
+                Linux Server Monitoring
+
+            </div>
+
+
+            <div class="header-subtitle">
+
+                Server ID:
+
+                <span id="server-id">
+                    Loading...
+                </span>
+
+            </div>
+
+        </div>
+
+
+        <div class="server-status">
+
+            <span class="status-dot"></span>
+
+            <span id="server-status">
+                CONNECTING
+            </span>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =========================
+         Main
+    ========================= -->
+
+    <main class="container">
+
+
+        <!-- =========================
+             Summary Cards
+        ========================= -->
+
+        <section class="cards">
+
+
+            <!-- CPU -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    CPU Usage
+                </div>
+
+
+                <div>
+
+                    <span
+                        class="card-value"
+                        id="cpu-value">
+                        --
+                    </span>
+
+                    <span class="card-unit">
+                        %
+                    </span>
+
+                </div>
+
+
+                <div
+                    class="card-footer"
+                    id="cpu-time">
+
+                    Last update: --
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Memory -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Memory Usage
+                </div>
+
+
+                <div>
+
+                    <span
+                        class="card-value"
+                        id="memory-value">
+                        --
+                    </span>
+
+                    <span class="card-unit">
+                        GB
+                    </span>
+
+                </div>
+
+
+                <div
+                    class="card-footer"
+                    id="memory-total">
+
+                    Total: --
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Disk -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Disk Usage
+                </div>
+
+
+                <div>
+
+                    <span
+                        class="card-value"
+                        id="disk-value">
+                        --
+                    </span>
+
+                    <span class="card-unit">
+                        %
+                    </span>
+
+                </div>
+
+
+                <div class="card-footer">
+
+                    Disk utilization
+
+                </div>
+
+            </div>
+
+
+
+            <!-- Incidents -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Open Incidents
+                </div>
+
+
+                <div>
+
+                    <span
+                        class="card-value"
+                        id="incident-value">
+                        --
+                    </span>
+
+                </div>
+
+
+                <div
+                    class="card-footer"
+                    id="incident-total">
+
+                    Total incidents: --
+
+                </div>
+
+            </div>
+
+
+        </section>
+
+
+
+        <!-- =========================
+             Server Information
+        ========================= -->
+
+        <section class="server-info-container">
+
+            <div class="section-title">
+
+                Server Information
+
+            </div>
+
+
+            <div
+                class="server-info-grid"
+                id="server-info">
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Hostname
+                    </div>
+
+                    <div
+                        class="info-value"
+                        id="hostname">
+                        --
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Environment
+                    </div>
+
+                    <div
+                        class="info-value"
+                        id="environment">
+                        --
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        CPU Cores
+                    </div>
+
+                    <div
+                        class="info-value"
+                        id="cpu-cores">
+                        --
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Total Memory
+                    </div>
+
+                    <div
+                        class="info-value"
+                        id="server-memory">
+                        --
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Total Disk
+                    </div>
+
+                    <div
+                        class="info-value"
+                        id="server-disk">
+                        --
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        IP Address
+                    </div>
+
+                    <div
+                        class="info-value"
+                        id="server-ip">
+                        --
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Last Check
+                    </div>
+
+                    <div
+                        class="info-value"
+                        id="last-check">
+                        --
+                    </div>
+
+                </div>
+
+
+                <div class="info-item">
+
+                    <div class="info-label">
+                        Status
+                    </div>
+
+                    <div
+                        class="info-value"
+                        id="info-status">
+                        --
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             CPU Chart
+        ========================= -->
+
+        <section class="chart-container">
+
+            <div class="section-title">
+                CPU Usage
+            </div>
+
+
+            <div class="chart-wrapper">
+
+                <canvas id="cpu-chart"></canvas>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             Memory Chart
+        ========================= -->
+
+        <section class="chart-container">
+
+            <div class="section-title">
+                Memory Usage
+            </div>
+
+
+            <div class="chart-wrapper">
+
+                <canvas id="memory-chart"></canvas>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             Disk Chart
+        ========================= -->
+
+        <section class="chart-container">
+
+            <div class="section-title">
+                Disk Usage
+            </div>
+
+
+            <div class="chart-wrapper">
+
+                <canvas id="disk-chart"></canvas>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- =========================
+             Incidents
+        ========================= -->
+
+        <section class="incident-container">
+
+            <div class="section-title">
+                Recent Incidents
+            </div>
+
+
+            <table>
+
+                <thead>
+
+                    <tr>
+
+                        <th>
+                            Incident ID
+                        </th>
+
+                        <th>
+                            Event
+                        </th>
+
+                        <th>
+                            Severity
+                        </th>
+
+                        <th>
+                            Status
+                        </th>
+
+                        <th>
+                            Detected
+                        </th>
+
+                        <th>
+                            Resolved
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+
+                <tbody id="incident-table">
+
+                    <tr>
+
+                        <td
+                            colspan="6"
+                            class="empty">
+
+                            Loading incidents...
+
+                        </td>
+
+                    </tr>
+
+                </tbody>
+
+            </table>
+
+        </section>
+
+
+    </main>
+
+
+
+    <script>
+
+
+        // =========================================
+        // Global variables
+        // =========================================
+
+        let cpuChart = null;
+
+        let memoryChart = null;
+
+        let diskChart = null;
+
+
+
+        // =========================================
+        // Load Server
+        // =========================================
+
+        async function loadServer() {
+
+            try {
+
+                const response =
+                    await fetch("/api/server");
+
+
+                const data =
+                    await response.json();
+
+
+
+                // Header
+
+                document.getElementById(
+                    "server-id"
+                ).textContent =
+                    data.server_id;
+
+
+                document.getElementById(
+                    "server-status"
+                ).textContent =
+                    data.status;
+
+
+                updateStatusStyle(
+                    data.status
+                );
+
+
+
+                // Memory summary
+
+                document.getElementById(
+                    "memory-total"
+                ).textContent =
+                    `Total: ${data.memory_total_gb} GB`;
+
+
+
+                // Server information
+
+                document.getElementById(
+                    "hostname"
+                ).textContent =
+                    data.hostname;
+
+
+                document.getElementById(
+                    "environment"
+                ).textContent =
+                    data.environment;
+
+
+                document.getElementById(
+                    "cpu-cores"
+                ).textContent =
+                    data.cpu_count;
+
+
+                document.getElementById(
+                    "server-memory"
+                ).textContent =
+                    `${data.memory_total_gb} GB`;
+
+
+                document.getElementById(
+                    "server-disk"
+                ).textContent =
+                    `${data.disk_total_gb} GB`;
+
+
+                document.getElementById(
+                    "server-ip"
+                ).textContent =
+                    data.ip_address;
+
+
+                document.getElementById(
+                    "last-check"
+                ).textContent =
+                    data.last_check;
+
+
+                document.getElementById(
+                    "info-status"
+                ).textContent =
+                    data.status;
+
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Failed to load server:",
+                    error
+                );
+
+            }
+
+        }
+
+
+
+        // =========================================
+        // Update Server Status
+        // =========================================
+
+        function updateStatusStyle(status) {
+
+            const statusElement =
+                document.querySelector(
+                    ".server-status"
+                );
+
+
+            const dot =
+                document.querySelector(
+                    ".status-dot"
+                );
+
+
+            if (status === "NORMAL") {
+
+                statusElement.style.background =
+                    "#064e3b";
+
+                statusElement.style.color =
+                    "#6ee7b7";
+
+                dot.style.background =
+                    "#34d399";
+
+            }
+
+            else if (status === "WARNING") {
+
+                statusElement.style.background =
+                    "#78350f";
+
+                statusElement.style.color =
+                    "#fcd34d";
+
+                dot.style.background =
+                    "#f59e0b";
+
+            }
+
+            else {
+
+                statusElement.style.background =
+                    "#7f1d1d";
+
+                statusElement.style.color =
+                    "#fca5a5";
+
+                dot.style.background =
+                    "#ef4444";
+
+            }
+
+        }
+
+
+
+        // =========================================
+        // Load Summary
+        // =========================================
+
+        async function loadSummary() {
+
+            try {
+
+                const response =
+                    await fetch("/api/summary");
+
+
+                const data =
+                    await response.json();
+
+
+
+                // CPU
+
+                document.getElementById(
+                    "cpu-value"
+                ).textContent =
+                    data.cpu !== null
+                        ? Number(data.cpu).toFixed(1)
+                        : "--";
+
+
+
+                // Memory
+
+                document.getElementById(
+                    "memory-value"
+                ).textContent =
+                    data.memory !== null
+                        ? Number(data.memory).toFixed(2)
+                        : "--";
+
+
+
+                // Disk
+
+                document.getElementById(
+                    "disk-value"
+                ).textContent =
+                    data.disk !== null
+                        ? Number(data.disk).toFixed(1)
+                        : "--";
+
+
+
+                // Open incidents
+
+                document.getElementById(
+                    "incident-value"
+                ).textContent =
+                    data.open_incidents;
+
+
+
+                // Total incidents
+
+                document.getElementById(
+                    "incident-total"
+                ).textContent =
+                    `Total incidents: ${data.total_incidents}`;
+
+
+
+                // Dashboard refresh time
+
+                document.getElementById(
+                    "cpu-time"
+                ).textContent =
+                    `Last update: ${new Date().toLocaleString()}`;
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Failed to load summary:",
+                    error
+                );
+
+            }
+
+        }
+
+
+
+        // =========================================
+        // Load Metrics
+        // =========================================
+
+        async function loadMetrics() {
+
+            try {
+
+                const response =
+                    await fetch("/api/metrics");
+
+
+                const data =
+                    await response.json();
+
+
+                if (!data || data.length === 0) {
+
+                    return;
+
+                }
+
+
+
+                const labels =
+                    data.map(
+                        item => item.timestamp
+                    );
+
+
+                const cpu =
+                    data.map(
+                        item => item.cpu
+                    );
+
+
+                const memory =
+                    data.map(
+                        item => item.memory
+                    );
+
+
+                const disk =
+                    data.map(
+                        item => item.disk
+                    );
+
+
+
+                // =====================================
+                // CPU Chart
+                // =====================================
+
+                if (!cpuChart) {
+
+                    const ctx =
+                        document
+                            .getElementById(
+                                "cpu-chart"
+                            )
+                            .getContext("2d");
+
+
+                    cpuChart =
+                        new Chart(
+                            ctx,
+                            {
+
+                                type: "line",
+
+                                data: {
+
+                                    labels: labels,
+
+                                    datasets: [
+
+                                        {
+                                            label:
+                                                "CPU Usage (%)",
+
+                                            data: cpu,
+
+                                            tension: 0.3,
+
+                                            borderWidth: 2,
+
+                                            pointRadius: 2,
+
+                                            fill: false
+                                        }
+
+                                    ]
+
+                                },
+
+                                options: {
+
+                                    responsive: true,
+
+                                    maintainAspectRatio:
+                                        false,
+
+                                    animation: false,
+
+                                    interaction: {
+
+                                        intersect: false,
+
+                                        mode: "index"
+
+                                    },
+
+                                    scales: {
+
+                                        y: {
+
+                                            beginAtZero:
+                                                true,
+
+                                            max: 100
+
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+                        );
+
+                }
+
+                else {
+
+                    cpuChart.data.labels =
+                        labels;
+
+                    cpuChart.data.datasets[0].data =
+                        cpu;
+
+                    cpuChart.update("none");
+
+                }
+
+
+
+                // =====================================
+                // Memory Chart
+                // =====================================
+
+                if (!memoryChart) {
+
+                    const ctx =
+                        document
+                            .getElementById(
+                                "memory-chart"
+                            )
+                            .getContext("2d");
+
+
+                    memoryChart =
+                        new Chart(
+                            ctx,
+                            {
+
+                                type: "line",
+
+                                data: {
+
+                                    labels: labels,
+
+                                    datasets: [
+
+                                        {
+                                            label:
+                                                "Memory Usage (GB)",
+
+                                            data: memory,
+
+                                            tension: 0.3,
+
+                                            borderWidth: 2,
+
+                                            pointRadius: 2,
+
+                                            fill: false
+                                        }
+
+                                    ]
+
+                                },
+
+                                options: {
+
+                                    responsive: true,
+
+                                    maintainAspectRatio:
+                                        false,
+
+                                    animation: false,
+
+                                    interaction: {
+
+                                        intersect: false,
+
+                                        mode: "index"
+
+                                    },
+
+                                    scales: {
+
+                                        y: {
+
+                                            beginAtZero:
+                                                true
+
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+                        );
+
+                }
+
+                else {
+
+                    memoryChart.data.labels =
+                        labels;
+
+                    memoryChart.data.datasets[0].data =
+                        memory;
+
+                    memoryChart.update("none");
+
+                }
+
+
+
+                // =====================================
+                // Disk Chart
+                // =====================================
+
+                if (!diskChart) {
+
+                    const ctx =
+                        document
+                            .getElementById(
+                                "disk-chart"
+                            )
+                            .getContext("2d");
+
+
+                    diskChart =
+                        new Chart(
+                            ctx,
+                            {
+
+                                type: "line",
+
+                                data: {
+
+                                    labels: labels,
+
+                                    datasets: [
+
+                                        {
+                                            label:
+                                                "Disk Usage (%)",
+
+                                            data: disk,
+
+                                            tension: 0.3,
+
+                                            borderWidth: 2,
+
+                                            pointRadius: 2,
+
+                                            fill: false
+                                        }
+
+                                    ]
+
+                                },
+
+                                options: {
+
+                                    responsive: true,
+
+                                    maintainAspectRatio:
+                                        false,
+
+                                    animation: false,
+
+                                    interaction: {
+
+                                        intersect: false,
+
+                                        mode: "index"
+
+                                    },
+
+                                    scales: {
+
+                                        y: {
+
+                                            beginAtZero:
+                                                true,
+
+                                            max: 100
+
+                                        }
+
+                                    }
+
+                                }
+
+                            }
+                        );
+
+                }
+
+                else {
+
+                    diskChart.data.labels =
+                        labels;
+
+                    diskChart.data.datasets[0].data =
+                        disk;
+
+                    diskChart.update("none");
+
+                }
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Failed to load metrics:",
+                    error
+                );
+
+            }
+
+        }
+
+
+
+        // =========================================
+        // Load Incidents
+        // =========================================
+
+        async function loadIncidents() {
+
+            try {
+
+                const response =
+                    await fetch("/api/incidents");
+
+
+                const data =
+                    await response.json();
+
+
+                const table =
+                    document.getElementById(
+                        "incident-table"
+                    );
+
+
+
+                if (data.length === 0) {
+
+                    table.innerHTML = `
+
+                        <tr>
+
+                            <td
+                                colspan="6"
+                                class="empty">
+
+                                No incidents
+
+                            </td>
+
+                        </tr>
+
+                    `;
+
+                    return;
+
+                }
+
+
+
+                table.innerHTML =
+                    data.map(
+                        incident => `
+
+                        <tr>
+
+                            <td>
+                                ${incident.incident_id}
+                            </td>
+
+                            <td>
+                                ${incident.event_type}
+                            </td>
+
+                            <td>
+
+                                <span class="
+                                    badge
+                                    badge-${incident.severity.toLowerCase()}
+                                ">
+
+                                    ${incident.severity}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                <span class="
+                                    badge
+                                    badge-${incident.status.toLowerCase()}
+                                ">
+
+                                    ${incident.status}
+
+                                </span>
+
+                            </td>
+
+                            <td>
+                                ${incident.detected_time}
+                            </td>
+
+                            <td>
+                                ${incident.resolved_time || "-"}
+                            </td>
+
+                        </tr>
+
+                    `
+                    ).join("");
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "Failed to load incidents:",
+                    error
+                );
+
+            }
+
+        }
+
+
+
+        // =========================================
+        // Initialize Dashboard
+        // =========================================
+
+        async function loadDashboard() {
+
+            await loadServer();
+
+            await loadSummary();
+
+            await loadMetrics();
+
+            await loadIncidents();
+
+        }
+
+
+
+        // =========================================
+        // Start Dashboard
+        // =========================================
+
+        loadDashboard();
+
+
+
+        // =========================================
+        // Auto Refresh
+        // =========================================
+
+        setInterval(
+            loadDashboard,
+            5000
+        );
+
+
+    </script>
+
+</body>
+
+</html>

@@ -11,3 +11,6 @@ logs/*.db
 
 # Environment files
 .env
+__pycache__/
+*.pyc
+logs/*.db

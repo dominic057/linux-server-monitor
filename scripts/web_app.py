@@ -46,6 +46,20 @@ def index():
         "dashboard.html"
     )
 
+@app.route("/health")
+def health():
+
+    if os.getenv("HEALTHCHECK_FAIL") == "true":
+        return jsonify({
+            "status": "unhealthy"
+        }), 500
+
+    return jsonify({
+        "status": "healthy"
+    }), 200
+
+
+
 
 # =========================
 # Metrics API
@@ -298,5 +312,5 @@ if __name__ == "__main__":
     app.run(
         host="0.0.0.0",
         port=5000,
-        debug=True
+        debug=False
     )

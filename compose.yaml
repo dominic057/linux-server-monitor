@@ -1,0 +1,53 @@
+services:
+
+  init:
+    build: .
+    container_name: linux-monitor-init
+    volumes:
+      - monitor-data:/app/logs
+    command: python scripts/register_server.py
+
+  monitor:
+    build: .
+    container_name: linux-monitor
+    volumes:
+      - monitor-data:/app/logs
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+    command: python scripts/monitor.py
+
+  web:
+    build: .
+    container_name: linux-monitor-web
+    ports:
+      - "5000:5000"
+    volumes:
+      - monitor-data:/app/logs
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+    environment:
+      PYTHONUNBUFFERED: "1"
+      HEALTHCHECK_FAIL: "false"
+    command: python scripts/web_app.py
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/health', timeout=3)"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+volumes:
+  monitor-data:

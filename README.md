@@ -1,11 +1,71 @@
 linux-server-monitor  
-一个基于 Python + psutil + Flask + SQLite 开发的轻量级 Linux 服务器监控系统。可以实时采集服务器的 CPU、内存、磁盘、网络 等核心运行指标，并根据阈值自动判断服务器健康状态。当服务器资源使用率异常时，系统会产生相应的 Incident（事件），并通过 Web Dashboard 实时展示服务器状态和近期告警记录。
-本项目主要用于学习 Linux 服务器监控、系统资源采集、异常告警、Incident 管理、REST API 和 Web Dashboard 的基本实现方式。
+一个基于 Python + psutil + Flask + SQLite 开发的轻量级 Linux 服务器监控系统。可以实时采集服务器的 CPU、内存、磁盘、网络 等核心运行指标，并根据阈值自动判断服务器健康状态。当服务器资源使用率异常时，系统会产生相应的 Incident（事件），并通过 Web Dashboard 实时展示服务器状态和近期告警记录，并通过 Docker Compose 完成容器化部署
   
 💻 环境要求  
 Linux、Python 3.10+、Git  
 本项目开发和测试环境：WSL2、Ubuntu 24.04 LTS
-  
+
+🐳Docker 部署说明  
+1. 环境要求  
+Docker  
+Docker Compose  
+docker --version  
+docker compose version  
+2. 构建并启动服务  
+cd ~/linux-server-monitor  
+使用 Docker Compose 构建镜像并启动服务：docker compose up -d --build  
+项目包含以下三个服务：  
+init	初始化数据库并注册服务器资产信息
+monitor	持续采集 CPU、内存、磁盘、网络指标并进行异常检测
+web	提供 Flask Web Dashboard 和 REST API  
+
+查看服务运行状态：  
+docker compose ps  
+正常情况下：  
+NAME                 SERVICE   STATUS  
+linux-monitor-init   init      Exited (0)  
+linux-monitor        monitor   Up  
+linux-monitor-web   web       Up (healthy)  
+其中 init 是一次性初始化服务，执行完成后正常退出；monitor 和 web 会持续运行。  
+
+3. 访问 Web Dashboard  
+Web 服务默认监听 5000 端口。  
+浏览器访问：http://127.0.0.1:5000  
+REST API：curl http://127.0.0.1:5000/api/summary
+
+4. 查看容器日志  
+查看监控服务日志：docker compose logs -f monitor  
+查看 Web 服务日志：docker compose logs -f web  
+查看最近 30 条监控日志：docker compose logs --tail=30 monitor  
+
+5. 查看容器健康状态  
+Web 服务配置了 Docker Health Check：docker inspect -f '{{.State.Health.Status}}' linux-monitor-web  
+正常情况下返回：healthy  
+也可以查看详细健康检查结果：docker inspect -f '{{json .State.Health}}' linux-monitor-web  
+Health Check 会定期访问：http://127.0.0.1:5000/health  用于判断 Web 服务是否正常运行。
+
+6. 数据持久化  
+项目使用 Docker Volume 保存 SQLite 数据：monitor-data  
+查看 Volume：docker volume ls  
+容器中的数据目录：/app/logs  
+其中包含：/app/logs/incidents.db  
+/app/logs/monitor.log  
+monitor-data 同时挂载到 monitor 和 web 服务，使监控服务产生的数据能够被 Web Dashboard 读取。  
+查看容器中的数据库：docker compose exec monitor ls -lh /app/logs  
+检查监控数据：docker compose exec monitor python -c "import sqlite3; conn=sqlite3.connect('/app/logs/incidents.db'); print('metrics:', conn.execute('SELECT COUNT(*) FROM metrics').fetchone()[0]); conn.close()"  
+
+7. 停止服务
+停止并删除容器及 Compose 网络：docker compose down  
+Docker Volume 默认不会被删除，因此监控数据仍然保留。  
+再次启动：docker compose up -d  即可继续使用原有监控数据。
+
+8. 重建镜像  
+修改 Python 代码、Dockerfile 或依赖后，可以重新构建：docker compose up -d --build  
+查看镜像：docker images  
+查看容器：docker ps  
+
+ 
+
 🚀 快速开始  
 1. 克隆项目  
 git clone https://github.com/dominic057/linux-server-monitor.git  
